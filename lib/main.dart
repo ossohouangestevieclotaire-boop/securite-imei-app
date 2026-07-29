@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'dart:convert';
 
 void main() {
@@ -7,91 +9,92 @@ void main() {
 }
 
 class SecuriteImeiApp extends StatelessWidget {
-  const SecuriteImeiApp({super.key});
+  const SecuriteImeiApp({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Sécurité IMEI & GPS',
-      theme: ThemeData.dark().copyWith(
-        scaffoldBackgroundColor: const Color(0xFF020617),
-        primaryColor: const Color(0xFF4F46E5),
-      ),
-      home: const HomeScreen(),
-      debugShowCheckedModeBanner: false,
+      title: 'Sécurité IMEI',
+      theme: ThemeData(primarySwatch: Colors.blue),
+      home: const EnregistrementScreen(),
     );
   }
 }
 
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+class EnregistrementScreen extends StatefulWidget {
+  const EnregistrementScreen({Key? key}) : super(key: key);
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  _EnregistrementScreenState createState() => _EnregistrementScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _EnregistrementScreenState extends State<EnregistrementScreen> {
+  static const platform = MethodChannel('securite.imei/device_admin');
+  final _formKey = GlobalKey<FormState>();
   final TextEditingController _imeiController = TextEditingController();
   final TextEditingController _usernameController = TextEditingController();
   bool _isLoading = false;
-  String _statusMessage = '';
 
-  // Votre URL Vercel
-  final String apiUrl = 'https://plateforme-imei-securite.vercel.app/api';
+  // Demander l'activation des droits d'administrateur Android
+  Future<void> _activerAdminDevice() async {
+    try {
+      await platform.invokeMethod('activerAdmin');
+      _afficherMessage('Demande d\'administration envoyée.');
+    } on PlatformException catch (e) {
+      _afficherMessage('Erreur admin: ${e.message}');
+    }
+  }
 
-  Future<void> _envoyerImeiEtGps() async {
-    final imei = _imeiController.text.trim();
-    final username = _usernameController.text.trim();
+  // Validation stricte de l'IMEI (15 chiffres)
+  String? _validateImei(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Veuillez entrer un numéro IMEI.';
+    }
+    final regExp = RegExp(r'^\d{15}$');
+    if (!regExp.hasMatch(value)) {
+      return 'L\'IMEI doit comporter exactement 15 chiffres.';
+    }
+    return null;
+  }
 
-    if (imei.isEmpty || username.isEmpty) {
-      setState(() {
-        _statusMessage = 'Veuillez remplir tous les champs.';
-      });
+  // Envoi sécurisé vers l'API Vercel
+  Future<void> _soumettreDonnees() async {
+    if (!_formKey.currentState!.validate()) {
       return;
     }
 
     setState(() {
       _isLoading = true;
-      _statusMessage = 'Activation du capteur GPS et localisation...';
     });
 
-    // Simulation d'un court délai pour simuler la recherche satellite GPS
-    await Future.delayed(const Duration(seconds: 1));
-
     try {
-      // Coordonnées GPS simulées (prêtes à être remplacées par le vrai GPS sur le téléphone final)
-      double simulatedLatitude = 5.3600; 
-      double simulatedLongitude = -4.0083;
+      // 1. Vérification d'Internet obligatoire
+      var connectivityResult = await (Connectivity().checkConnectivity());
+      if (connectivityResult == ConnectivityResult.none) {
+        _afficherMessage('Erreur : Connexion Internet requise.');
+        setState(() { _isLoading = false; });
+        return;
+      }
 
-      setState(() {
-        _statusMessage = 'Transmission des données sécurisées au serveur...';
-      });
-
+      // 2. Requête vers la plateforme Vercel
       final response = await http.post(
-        Uri.parse(apiUrl),
+        Uri.parse('https://plateforme-imei-securite.vercel.app/api/devices'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
-          'imei': imei,
-          'owner': username,
-          'latitude': simulatedLatitude,
-          'longitude': simulatedLongitude,
-          'status': 'ACTIF_AVEC_GPS',
+          'imei': _imeiController.text,
+          'username': _usernameController.text,
         }),
       );
 
-      if (response.statusCode == 201 || response.statusCode == 200) {
-        setState(() {
-          _statusMessage = 'Appareil et position GPS associés avec succès !';
-        });
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        _afficherMessage('Succès : Enregistré sur la plateforme en ligne !');
+        _imeiController.clear();
+        _usernameController.clear();
       } else {
-        setState(() {
-          _statusMessage = 'Erreur lors de la synchronisation serveur.';
-        });
+        _afficherMessage('Erreur du serveur : ${response.body}');
       }
     } catch (e) {
-      setState(() {
-        _statusMessage = 'Erreur réseau : Impossible de joindre le serveur.';
-      });
+      _afficherMessage('Erreur de connexion avec Vercel : $e');
     } finally {
       setState(() {
         _isLoading = false;
@@ -99,75 +102,70 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  void _afficherMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Sécurité Nationale • IMEI & GPS', style: TextStyle(fontSize: 15)),
-        backgroundColor: const Color(0xFF0F172A),
+        title: const Text('Sécurité IMEI - Anti-Vol'),
       ),
       body: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Icon(Icons.my_location_rounded, size: 60, color: Color(0xFF4F46E5)),
-            const SizedBox(height: 20),
-            const Text(
-              'Enregistrement avec Géolocalisation',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Associez votre IMEI pour permettre le suivi de position.',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 30),
-            TextField(
-              controller: _usernameController,
-              decoration: InputDecoration(
-                labelText: 'Votre nom d\'utilisateur',
-                filled: true,
-                fillColor: const Color(0xFF0F172A),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        padding: const EdgeInsets.all(16.0),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                'Enregistrement Sécurisé & Protection',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _imeiController,
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(
-                labelText: 'Numéro IMEI (15 chiffres)',
-                filled: true,
-                fillColor: const Color(0xFF0F172A),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              const SizedBox(height: 20),
+              ElevatedButton.icon(
+                onPressed: _activerAdminDevice,
+                icon: const Icon(Icons.security),
+                label: const Text('Activer la protection système (Admin)'),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
               ),
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: _isLoading ? null : _envoyerImeiEtGps,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF4F46E5),
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              child: _isLoading
-                  ? const CircularProgressIndicator(color: Colors.white)
-                  : const Text('Associer et envoyer le GPS', style: TextStyle(fontSize: 15, color: Colors.white)),
-            ),
-            const SizedBox(height: 20),
-            if (_statusMessage.isNotEmpty)
-              Text(
-                _statusMessage,
-                style: TextStyle(
-                  color: _statusMessage.contains('succès') ? Colors.greenAccent : Colors.redAccent,
-                  fontSize: 13,
+              const SizedBox(height: 20),
+              TextFormField(
+                controller: _usernameController,
+                decoration: const InputDecoration(
+                  labelText: 'Nom d\'utilisateur',
+                  border: OutlineInputBorder(),
                 ),
-                textAlign: TextAlign.center,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Veuillez entrer un nom d\'utilisateur.';
+                  }
+                  return null;
+                },
               ),
-          ],
+              const SizedBox(height: 15),
+              TextFormField(
+                controller: _imeiController,
+                keyboardType: TextInputType.number,
+                maxLength: 15,
+                decoration: const InputDecoration(
+                  labelText: 'Numéro IMEI (15 chiffres)',
+                  border: OutlineInputBorder(),
+                ),
+                validator: _validateImei,
+              ),
+              const SizedBox(height: 20),
+              _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : ElevatedButton(
+                      onPressed: _soumettreDonnees,
+                      child: const Text('Enregistrer sur Vercel'),
+                    ),
+            ],
+          ),
         ),
       ),
     );
