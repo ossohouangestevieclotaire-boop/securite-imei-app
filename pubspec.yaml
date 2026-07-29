@@ -1,5 +1,5 @@
-name: securite_imei
-description: Application de securite IMEI et GPS
+name: securite_imei_app
+description: "Application de sécurité et de traçabilité IMEI anti-vol."
 publish_to: 'none'
 version: 1.0.0+1
 
@@ -10,6 +10,7 @@ dependencies:
   flutter:
     sdk: flutter
   http: ^1.2.0
+  connectivity_plus: ^5.0.2
 
 dev_dependencies:
   flutter_test:
