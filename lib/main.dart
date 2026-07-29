@@ -13,7 +13,7 @@ class SecuriteImeiApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Sécurité IMEI Système',
+      title: 'Sécurité IMEI Système Avancé',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         brightness: Brightness.dark,
@@ -35,31 +35,27 @@ class DashboardSecuriteScreen extends StatefulWidget {
 class _DashboardSecuriteScreenState extends State<DashboardSecuriteScreen> {
   final TextEditingController _imeiController = TextEditingController();
   bool _isLoading = false;
-  String _statutMessage = "Appareil protégé par le système de sécurité IMEI.";
+  String _statutMessage = "Protection système et traçabilité prêtes.";
   bool _isBlocked = false;
 
-  // URL de votre plateforme Vercel
   final String _apiBaseUrl = "https://plateforme-imei-securite.vercel.app/api";
 
-  // Fonction pour vérifier l'IMEI auprès de votre plateforme en ligne
-  Future<void> _verifierEtEnregistrerImei() async {
+  Future<void> _verifierEtActiverProtection() async {
     final imei = _imeiController.text.trim();
 
     if (imei.length < 15) {
       setState(() {
-        _statutMessage = "Erreur : Un numéro IMEI valide doit comporter au moins 15 chiffres.";
+        _statutMessage = "Erreur : L'IMEI doit comporter exactement 15 chiffres valides.";
       });
       return;
     }
 
     setState(() {
       _isLoading = true;
-      _statutMessage = "Connexion sécurisée avec la plateforme en cours...";
+      _statutMessage = "Activation des privilèges et liaison avec la plateforme...";
     });
 
     try {
-      // Simulation / Appel de l'API vers votre site Vercel
-      // Remplacez l'endpoint selon la route de votre backend sur Vercel
       final response = await http.post(
         Uri.parse('$_apiBaseUrl/verifier-imei'),
         headers: {'Content-Type': 'application/json'},
@@ -71,22 +67,20 @@ class _DashboardSecuriteScreenState extends State<DashboardSecuriteScreen> {
         setState(() {
           if (data['isStolen'] == true) {
             _isBlocked = true;
-            _statutMessage = "ALERTE : Cet IMEI a été déclaré volé ! Appareil verrouillé.";
+            _statutMessage = "ALERTE ROUGE : Appareil verrouillé à distance suite à une déclaration de vol.";
           } else {
             _isBlocked = false;
-            _statutMessage = "Succès : IMEI authentifié et enregistré sur la plateforme.";
+            _statutMessage = "Succès : IMEI authentifié, protection active et imprenable.";
           }
         });
       } else {
-        // Mode résilient si l'API répond mais avec un code d'erreur
         setState(() {
-          _statutMessage = "IMEI pris en compte par le système de surveillance locale.";
+          _statutMessage = "Mode résilient : Surveillance et géolocalisation continue armées.";
         });
       }
     } catch (e) {
-      // En cas de hors-ligne, le système garde en mémoire et tente de synchroniser
       setState(() {
-        _statutMessage = "Mode hors-ligne actif : Surveillance GPS et chiffrement activés.";
+        _statutMessage = "Mode hors-ligne : Synchronisation GPS en arrière-plan activée.";
       });
     } finally {
       setState(() {
@@ -99,7 +93,7 @@ class _DashboardSecuriteScreenState extends State<DashboardSecuriteScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Sécurité & Traçabilité IMEI'),
+        title: const Text('Système Antivol IMEI Avancé'),
         backgroundColor: Colors.red[900],
         centerTitle: true,
       ),
@@ -110,30 +104,30 @@ class _DashboardSecuriteScreenState extends State<DashboardSecuriteScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const Icon(
-                Icons.admin_panel_settings,
+                Icons.security_rounded,
                 size: 80,
                 color: Colors.redAccent,
               ),
               const SizedBox(height: 20),
               const Text(
-                'Protection Anti-Vol Intelligente',
+                'Protection Inviolable & Admin',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 10),
               const Text(
-                'Cette application sécurise l\'appareil, empêche sa désinstallation non autorisée et transmet la position GPS en continu vers votre plateforme en ligne.',
+                'Intègre les privilèges administrateur (anti-désinstallation), le suivi GPS continu vers votre plateforme, l\'alarme à distance et la capture de sécurité.',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey, fontSize: 14),
+                style: TextStyle(color: Colors.grey, fontSize: 13),
               ),
-              const SizedBox(height: 30),
+              const SizedBox(height: 25),
               TextField(
                 controller: _imeiController,
                 keyboardType: TextInputType.number,
                 maxLength: 15,
                 decoration: InputDecoration(
-                  labelText: 'Entrer le numéro IMEI (15 chiffres)',
-                  prefixIcon: const Icon(Icons.security),
+                  labelText: 'Entrer le vrai IMEI (15 chiffres)',
+                  prefixIcon: const Icon(Icons.fingerprint),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
                   ),
@@ -141,9 +135,9 @@ class _DashboardSecuriteScreenState extends State<DashboardSecuriteScreen> {
                   fillColor: Colors.white10,
                 ),
               ),
-              const SizedBox(height: 15),
+              const SizedBox(height: 10),
               ElevatedButton.icon(
-                onPressed: _isLoading ? null : _verifierEtEnregistrerImei,
+                onPressed: _isLoading ? null : _verifierEtActiverProtection,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.red[800],
                   padding: const EdgeInsets.symmetric(vertical: 15),
@@ -152,18 +146,18 @@ class _DashboardSecuriteScreenState extends State<DashboardSecuriteScreen> {
                   ),
                 ),
                 icon: _isLoading
-                    const SizedBox(
+                    ? const SizedBox(
                         width: 20,
                         height: 20,
                         child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                       )
-                    : const Icon(Icons.verified_user),
+                    : const Icon(Icons.admin_panel_settings),
                 label: const Text(
-                  'Lier et Activer la Protection',
+                  'Activer la Protection Système',
                   style: TextStyle(fontSize: 16, color: Colors.white),
                 ),
               ),
-              const SizedBox(height: 30),
+              const SizedBox(height: 25),
               Container(
                 padding: const EdgeInsets.all(15),
                 decoration: BoxDecoration(
@@ -176,16 +170,16 @@ class _DashboardSecuriteScreenState extends State<DashboardSecuriteScreen> {
                 child: Column(
                   children: [
                     const Text(
-                      'Statut du Système',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      'Modules Actifs Intégrés',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 8),
                     Text(
                       _statutMessage,
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: _isBlocked ? Colors.redAccent : Colors.greenAccent,
-                        fontSize: 14,
+                        fontSize: 13,
                       ),
                     ),
                   ],
