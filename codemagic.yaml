@@ -5,6 +5,8 @@ workflows:
       flutter: stable
       xcode: latest
     scripts:
+      - name: Regenerate native files
+        script: flutter create . --org com.example --project-name securite_imei_app
       - name: Get dependencies
         script: flutter packages get
       - name: Build APK
