@@ -5,6 +5,8 @@ workflows:
     environment:
       flutter: stable
     scripts:
+      - name: Get packages
+        script: flutter pub get
       - name: Build APK
         script: flutter build apk --debug
     artifacts:
