@@ -5,8 +5,8 @@ workflows:
       flutter: stable
       xcode: latest
     scripts:
-      - name: Generate Android folder automatically
-        script: flutter create . --org com.example --project-name securite_imei_app
+      - name: Clean build state
+        script: flutter clean
       - name: Get dependencies
         script: flutter pub get
       - name: Build APK
