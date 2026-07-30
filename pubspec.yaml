@@ -1,7 +1,6 @@
 name: securite_imei_app
-description: "Une application de sécurité IMEI"
+description: "Système Antivol IMEI Avancé"
 publish_to: 'none'
-
 version: 1.0.0+1
 
 environment:
@@ -10,12 +9,12 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  cupertino_icons: ^1.0.6
   http: ^1.2.0
+  device_policy_manager: ^1.0.3
 
 dev_dependencies:
   flutter_test:
-    sdk: flutter
+    sdk: flutter_test
   flutter_lints: ^3.0.0
 
 flutter:
