@@ -38,6 +38,7 @@ class _DashboardSecuriteScreenState extends State<DashboardSecuriteScreen> {
   String _statutMessage = "Protection système et traçabilité prêtes.";
   bool _isBlocked = false;
 
+  // Remplacez par votre URL exacte Vercel si besoin
   final String _apiBaseUrl = "https://plateforme-imei-securite.vercel.app/api";
 
   Future<void> _verifierEtActiverProtection() async {
@@ -57,10 +58,10 @@ class _DashboardSecuriteScreenState extends State<DashboardSecuriteScreen> {
 
     try {
       final response = await http.post(
-        Uri.parse('$_apiBaseUrl/verifier-imei'),
+        Uri.parse(_apiBaseUrl),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'imei': imei}),
-      ).timeout(const Duration(seconds: 10));
+      ).timeout(const Duration(seconds: 8));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -75,7 +76,7 @@ class _DashboardSecuriteScreenState extends State<DashboardSecuriteScreen> {
         });
       } else {
         setState(() {
-          _statutMessage = "Mode résilient : Surveillance et synchronisation actives.";
+          _statutMessage = "Mode résilient : Erreur serveur (${response.statusCode}).";
         });
       }
     } catch (e) {
@@ -83,6 +84,7 @@ class _DashboardSecuriteScreenState extends State<DashboardSecuriteScreen> {
         _statutMessage = "Mode hors-ligne : Synchronisation en arrière-plan armée.";
       });
     } finally {
+      // Garantit que le bouton se réactive quoiqu'il arrive
       setState(() {
         _isLoading = false;
       });
