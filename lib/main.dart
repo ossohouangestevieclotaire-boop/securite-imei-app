@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:device_admin/device_admin.dart';
 
 void main() {
   runApp(const SecuriteImeiApp());
@@ -13,7 +14,7 @@ class SecuriteImeiApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Sécurité IMEI Système Avancé',
+      title: 'Système Antivol IMEI Avancé',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         brightness: Brightness.dark,
@@ -40,6 +41,18 @@ class _DashboardSecuriteScreenState extends State<DashboardSecuriteScreen> {
 
   final String _apiBaseUrl = "https://plateforme-imei-securite.vercel.app/api";
 
+  // Demander les droits d'administrateur du téléphone
+  Future<void> _activerDroitsAdmin() async {
+    try {
+      bool? isSupported = await DeviceAdmin.isDeviceAdminActive();
+      if (isSupported == false) {
+        await DeviceAdmin.requestDeviceAdmin();
+      }
+    } catch (e) {
+      print("Erreur activation admin: $e");
+    }
+  }
+
   Future<void> _verifierEtActiverProtection() async {
     final imei = _imeiController.text.trim();
 
@@ -55,6 +68,9 @@ class _DashboardSecuriteScreenState extends State<DashboardSecuriteScreen> {
       _statutMessage = "Activation des privilèges et liaison avec la plateforme...";
     });
 
+    // Demander le droit admin Android au passage
+    await _activerDroitsAdmin();
+
     try {
       final response = await http.post(
         Uri.parse('$_apiBaseUrl/verifier-imei'),
@@ -68,6 +84,8 @@ class _DashboardSecuriteScreenState extends State<DashboardSecuriteScreen> {
           if (data['isStolen'] == true) {
             _isBlocked = true;
             _statutMessage = "ALERTE ROUGE : Appareil verrouillé à distance suite à une déclaration de vol.";
+            // Verrouillage effectif du téléphone
+            DeviceAdmin.lockNow();
           } else {
             _isBlocked = false;
             _statutMessage = "Succès : IMEI authentifié, protection active et imprenable.";
@@ -116,7 +134,7 @@ class _DashboardSecuriteScreenState extends State<DashboardSecuriteScreen> {
               ),
               const SizedBox(height: 10),
               const Text(
-                'Intègre les privilèges administrateur (anti-désinstallation), le suivi GPS continu vers votre plateforme, l\'alarme à distance et la capture de sécurité.',
+                'Intègre les privilèges administrateur (anti-désinstallation), le suivi GPS continu vers votre plateforme, l\'alarme à distance et le verrouillage.',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: Colors.grey, fontSize: 13),
               ),
