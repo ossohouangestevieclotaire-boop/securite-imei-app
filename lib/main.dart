@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:device_admin/device_admin.dart';
 
 void main() {
   runApp(const SecuriteImeiApp());
@@ -41,18 +40,6 @@ class _DashboardSecuriteScreenState extends State<DashboardSecuriteScreen> {
 
   final String _apiBaseUrl = "https://plateforme-imei-securite.vercel.app/api";
 
-  // Demander les droits d'administrateur du téléphone
-  Future<void> _activerDroitsAdmin() async {
-    try {
-      bool? isSupported = await DeviceAdmin.isDeviceAdminActive();
-      if (isSupported == false) {
-        await DeviceAdmin.requestDeviceAdmin();
-      }
-    } catch (e) {
-      print("Erreur activation admin: $e");
-    }
-  }
-
   Future<void> _verifierEtActiverProtection() async {
     final imei = _imeiController.text.trim();
 
@@ -65,11 +52,8 @@ class _DashboardSecuriteScreenState extends State<DashboardSecuriteScreen> {
 
     setState(() {
       _isLoading = true;
-      _statutMessage = "Activation des privilèges et liaison avec la plateforme...";
+      _statutMessage = "Vérification et liaison avec la plateforme...";
     });
-
-    // Demander le droit admin Android au passage
-    await _activerDroitsAdmin();
 
     try {
       final response = await http.post(
@@ -83,22 +67,20 @@ class _DashboardSecuriteScreenState extends State<DashboardSecuriteScreen> {
         setState(() {
           if (data['isStolen'] == true) {
             _isBlocked = true;
-            _statutMessage = "ALERTE ROUGE : Appareil verrouillé à distance suite à une déclaration de vol.";
-            // Verrouillage effectif du téléphone
-            DeviceAdmin.lockNow();
+            _statutMessage = "ALERTE ROUGE : Appareil signalé volé sur la plateforme.";
           } else {
             _isBlocked = false;
-            _statutMessage = "Succès : IMEI authentifié, protection active et imprenable.";
+            _statutMessage = "Succès : IMEI authentifié, protection active.";
           }
         });
       } else {
         setState(() {
-          _statutMessage = "Mode résilient : Surveillance et géolocalisation continue armées.";
+          _statutMessage = "Mode résilient : Surveillance et synchronisation actives.";
         });
       }
     } catch (e) {
       setState(() {
-        _statutMessage = "Mode hors-ligne : Synchronisation GPS en arrière-plan activée.";
+        _statutMessage = "Mode hors-ligne : Synchronisation en arrière-plan armée.";
       });
     } finally {
       setState(() {
@@ -128,13 +110,13 @@ class _DashboardSecuriteScreenState extends State<DashboardSecuriteScreen> {
               ),
               const SizedBox(height: 20),
               const Text(
-                'Protection Inviolable & Admin',
+                'Protection Inviolable',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 10),
               const Text(
-                'Intègre les privilèges administrateur (anti-désinstallation), le suivi GPS continu vers votre plateforme, l\'alarme à distance et le verrouillage.',
+                'Liaison sécurisée avec votre plateforme web de suivi des appareils.',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: Colors.grey, fontSize: 13),
               ),
@@ -169,7 +151,7 @@ class _DashboardSecuriteScreenState extends State<DashboardSecuriteScreen> {
                         height: 20,
                         child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                       )
-                    : const Icon(Icons.admin_panel_settings),
+                    : const Icon(Icons.security),
                 label: const Text(
                   'Activer la Protection Système',
                   style: TextStyle(fontSize: 16, color: Colors.white),
@@ -188,7 +170,7 @@ class _DashboardSecuriteScreenState extends State<DashboardSecuriteScreen> {
                 child: Column(
                   children: [
                     const Text(
-                      'Modules Actifs Intégrés',
+                      'Statut du Système',
                       style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                     ),
                     const SizedBox(height: 8),
