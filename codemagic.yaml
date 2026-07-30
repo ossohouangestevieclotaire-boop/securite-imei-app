@@ -1,18 +1,15 @@
 workflows:
   default-workflow:
     name: Default Workflow
+    max_build_duration: 30
     environment:
       flutter: stable
-      xcode: latest
     scripts:
-      - name: Create Android scaffolding if missing
-        script: |
-          if [ ! -d "android" ]; then
-            flutter create . --org com.example --project-name securite_imei_app
-          fi
       - name: Get dependencies
-        script: flutter pub get
+        script: |
+          flutter pub get
       - name: Build APK
-        script: flutter build apk --release
+        script: |
+          flutter build apk --release
     artifacts:
-      - build/**/outputs/**/*.apk
+      - build/app/outputs/flutter-apk/app-release.apk
