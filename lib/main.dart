@@ -2,8 +2,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:device_policy_manager/device_policy_manager.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(const SecuriteImeiApp());
 }
 
@@ -37,9 +39,40 @@ class _DashboardSecuriteScreenState extends State<DashboardSecuriteScreen> {
   bool _isLoading = false;
   String _statutMessage = "Protection système et traçabilité prêtes.";
   bool _isBlocked = false;
+  bool _isAdminActive = false;
 
-  // Remplacez par votre URL exacte Vercel si besoin
   final String _apiBaseUrl = "https://plateforme-imei-securite.vercel.app/api";
+
+  @override
+  void initState() {
+    super.initState();
+    _verifierStatutAdmin();
+  }
+
+  Future<void> _verifierStatutAdmin() async {
+    try {
+      bool isActive = await DevicePolicyManager.isPermissionGranted();
+      setState(() {
+        _isAdminActive = isActive;
+      });
+    } catch (e) {
+      // Gestion silencieuse si non supporté sur l'émulateur
+    }
+  }
+
+  Future<void> _activerDroitsAdmin() async {
+    try {
+      await DevicePolicyManager.requestPermession(
+        "L'activation des droits d'administration est requise pour empêcher la désinstallation de l'antivol et sécuriser l'appareil.",
+      );
+      // Revérifier après le retour des paramètres
+      await _verifierStatutAdmin();
+    } catch (e) {
+      setState(() {
+        _statutMessage = "Erreur lors de l'activation des droits d'administration.";
+      });
+    }
+  }
 
   Future<void> _verifierEtActiverProtection() async {
     final imei = _imeiController.text.trim();
@@ -68,12 +101,22 @@ class _DashboardSecuriteScreenState extends State<DashboardSecuriteScreen> {
         setState(() {
           if (data['isStolen'] == true) {
             _isBlocked = true;
-            _statutMessage = "ALERTE ROUGE : Appareil signalé volé sur la plateforme.";
+            _statutMessage = "ALERTE ROUGE : Appareil volé ! Verrouillage du téléphone en cours...";
           } else {
             _isBlocked = false;
             _statutMessage = "Succès : IMEI authentifié, protection active.";
           }
         });
+
+        // SI L'APPAREIL EST DECLARE VOLE -> VERROUILLAGE DISTANT DU TELEPHONE
+        if (data['isStolen'] == true) {
+          try {
+            // Verrouille instantanément l'écran du téléphone
+            await DevicePolicyManager.lockNow();
+          } catch (lockError) {
+            // Nécessite que les droits admin soient bien activés au préalable
+          }
+        }
       } else {
         setState(() {
           _statutMessage = "Mode résilient : Erreur serveur (${response.statusCode}).";
@@ -84,7 +127,6 @@ class _DashboardSecuriteScreenState extends State<DashboardSecuriteScreen> {
         _statutMessage = "Mode hors-ligne : Synchronisation en arrière-plan armée.";
       });
     } finally {
-      // Garantit que le bouton se réactive quoiqu'il arrive
       setState(() {
         _isLoading = false;
       });
@@ -118,11 +160,28 @@ class _DashboardSecuriteScreenState extends State<DashboardSecuriteScreen> {
               ),
               const SizedBox(height: 10),
               const Text(
-                'Liaison sécurisée avec votre plateforme web de suivi des appareils.',
+                'Liaison sécurisée avec votre plateforme web et verrouillage anti-vol.',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: Colors.grey, fontSize: 13),
               ),
-              const SizedBox(height: 25),
+              const SizedBox(height: 20),
+              
+              // BOUTON POUR ACTIVER LES DROITS ADMINISTRATEUR (Anti-désinstallation)
+              ElevatedButton.icon(
+                onPressed: _isAdminActive ? null : _activerDroitsAdmin,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _isAdminActive ? Colors.green[800] : Colors.blue[800],
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                icon: Icon(_isAdminActive ? Icons.check_circle : Icons.admin_panel_settings),
+                label: Text(
+                  _isAdminActive ? "Droits Admin Actifs (Protégé)" : "Activer la Protection Anti-Désinstallation",
+                  style: const TextStyle(fontSize: 14, color: Colors.white),
+                ),
+              ),
+              const SizedBox(height: 20),
+
               TextField(
                 controller: _imeiController,
                 keyboardType: TextInputType.number,
