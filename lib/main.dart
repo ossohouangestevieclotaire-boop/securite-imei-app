@@ -37,7 +37,7 @@ class DashboardSecuriteScreen extends StatefulWidget {
 class _DashboardSecuriteScreenState extends State<DashboardSecuriteScreen> {
   final TextEditingController _imeiController = TextEditingController();
   bool _isLoading = false;
-  String _statutMessage = "Protection système et traçabilité prêtes.";
+  String _statutMessage = "Vérification des accès système...";
   bool _isBlocked = false;
   bool _isAdminActive = false;
 
@@ -46,30 +46,58 @@ class _DashboardSecuriteScreenState extends State<DashboardSecuriteScreen> {
   @override
   void initState() {
     super.initState();
-    _verifierStatutAdmin();
+    _verifierEtDemanderAdminAuDemarrage();
   }
 
-  Future<void> _verifierStatutAdmin() async {
+  // Vérifie et demande l'administration automatiquement dès l'ouverture
+  Future<void> _verifierEtDemanderAdminAuDemarrage() async {
     try {
       bool isActive = await DevicePolicyManager.isPermissionGranted();
       setState(() {
         _isAdminActive = isActive;
       });
+
+      if (!isActive) {
+        // Demande automatique au premier lancement
+        await DevicePolicyManager.requestPermession(
+          "L'activation des droits d'administration est obligatoire pour sécuriser l'appareil et empêcher la désinstallation.",
+        );
+        // Revérifier après le retour de l'utilisateur
+        bool updatedStatus = await DevicePolicyManager.isPermissionGranted();
+        setState(() {
+          _isAdminActive = updatedStatus;
+          _statutMessage = updatedStatus 
+              ? "Protection anti-désinstallation active." 
+              : "Attention : Droits requis pour une protection optimale.";
+        });
+      } else {
+        setState(() {
+          _statutMessage = "Protection système et traçabilité prêtes.";
+        });
+      }
     } catch (e) {
-      // Ignorer si non supporté ou non initialisé
+      setState(() {
+        _statutMessage = "Prêt. Veuillez entrer votre IMEI.";
+      });
     }
   }
 
   Future<void> _activerDroitsAdmin() async {
+    setState(() {
+      _statutMessage = "Ouverture des paramètres d'administration...";
+    });
     try {
-      // Correction de l'orthographe exacte de la méthode du plugin
       await DevicePolicyManager.requestPermession(
-        "L'activation des droits d'administration est requise pour empêcher la désinstallation et sécuriser l'appareil.",
+        "L'activation des droits d'administration est requise pour empêcher la désinstallation.",
       );
-      await _verifierStatutAdmin();
+      bool isActive = await DevicePolicyManager.isPermissionGranted();
+      setState(() {
+        _isAdminActive = isActive;
+        _statutMessage = isActive ? "Protection active avec succès." : "Activation annulée ou en attente.";
+      });
     } catch (e) {
       setState(() {
-        _statutMessage = "Erreur lors de l'activation des droits d'administration.";
+        _statutMessage = "Veuillez valider l'administration dans les réglages.";
       });
     }
   }
@@ -112,7 +140,7 @@ class _DashboardSecuriteScreenState extends State<DashboardSecuriteScreen> {
           try {
             await DevicePolicyManager.lockNow();
           } catch (lockError) {
-            // Nécessite que les droits admin soient actifs
+            // Nécessite l'activation administrateur
           }
         }
       } else {
@@ -164,7 +192,7 @@ class _DashboardSecuriteScreenState extends State<DashboardSecuriteScreen> {
               ),
               const SizedBox(height: 20),
               ElevatedButton.icon(
-                onPressed: _isAdminActive ? null : _activerDroitsAdmin,
+                onPressed: _activerDroitsAdmin,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: _isAdminActive ? Colors.green[800] : Colors.blue[800],
                   padding: const EdgeInsets.symmetric(vertical: 12),
