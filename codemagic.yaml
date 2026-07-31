@@ -8,7 +8,7 @@ workflows:
       - name: Generate Android scaffolding
         script: |
           flutter create . --platforms=android
-      - name: Inject Android Admin Config and Receiver
+      - name: Create Clean Android Configuration
         script: |
           # 1. Création du fichier device_admin.xml
           mkdir -p android/app/src/main/res/xml
@@ -21,34 +21,51 @@ workflows:
           </device-admin>
           EOF
 
-          # 2. Ajout propre du receiver dans le fichier AndroidManifest.xml via un script Python
-          python3 -c "
-          path = 'android/app/src/main/AndroidManifest.xml'
-          with open(path, 'r') as f:
-              content = f.read()
+          # 2. Création complète d'un fichier AndroidManifest.xml propre et valide
+          cat << 'EOF' > android/app/src/main/AndroidManifest.xml
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <uses-permission android:name="android.permission.BIND_DEVICE_ADMIN"/>
+              <application
+                  android:label="securite_imei_app"
+                  android:name="${applicationName}"
+                  android:icon="@mipmap/ic_launcher">
+                  
+                  <receiver
+                      android:name=".MainActivity"
+                      android:permission="android.permission.BIND_DEVICE_ADMIN"
+                      android:exported="true">
+                      <meta-data
+                          android:name="android.app.device_admin"
+                          android:resource="@xml/device_admin" />
+                      <intent-filter>
+                          <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
+                      </intent-filter>
+                  </receiver>
 
-          receiver_code = '''
-              <receiver
-                  android:name=\".MainActivity\"
-                  android:permission=\"android.permission.BIND_DEVICE_ADMIN\"
-                  android:exported=\"true\">
+                  <activity
+                      android:name=".MainActivity"
+                      android:exported="true"
+                      android:launchMode="singleTop"
+                      android:taskAffinity=""
+                      android:theme="@style/LaunchTheme"
+                      android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+                      android:hardwareAccelerated="true"
+                      android:windowSoftInputMode="adjustResize">
+                      <meta-data
+                          android:name="io.flutter.embedding.android.NormalTheme"
+                          android:resource="@style/NormalTheme"
+                      />
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN"/>
+                          <category android:name="android.intent.category.LAUNCHER"/>
+                      </intent-filter>
+                  </activity>
                   <meta-data
-                      android:name=\"android.app.device_admin\"
-                      android:resource=\"@xml/device_admin\" />
-                  <intent-filter>
-                      <action android:name=\"android.app.action.DEVICE_ADMIN_ENABLED\" />
-                  </intent-filter>
-              </receiver>
-          '''
-
-          # On insère juste après la balise <application ...>
-          if '<application' in content:
-              parts = content.split('<application', 1)
-              content = parts[0] + '<application' + receiver_code + parts[1]
-
-          with open(path, 'w') as f:
-              f.write(content)
-          "
+                      android:name="flutterEmbedding"
+                      android:value="2" />
+              </application>
+          </manifest>
+          EOF
       - name: Get dependencies
         script: |
           flutter pub get
