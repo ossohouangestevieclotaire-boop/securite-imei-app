@@ -27,7 +27,6 @@ workflows:
           import android.app.admin.DeviceAdminReceiver
           import android.content.Context
           import android.content.Intent
-          import android.widget.Toast
 
           class DeviceAdminReceiver : DeviceAdminReceiver() {
               override fun onEnabled(context: Context, intent: Intent) {
@@ -39,7 +38,7 @@ workflows:
           }
           EOF
 
-          # 3. Mise à jour de MainActivity.kt pour gérer le canal natif
+          # 3. Création de MainActivity.kt avec le pont natif corrigé
           cat << 'EOF' > android/app/src/main/kotlin/com/securiteimei/securite_imei_app/MainActivity.kt
           package com.securiteimei.securite_imei_app
 
@@ -70,9 +69,14 @@ workflows:
                               val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
                                   putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, compName)
                                   putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, explanation)
+                                  addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                               }
-                              startActivity(intent)
-                              result.success(true)
+                              try {
+                                  startActivity(intent)
+                                  result.success(true)
+                              } catch (e: Exception) {
+                                  result.error("ACTIVITY_ERROR", e.message, null)
+                              }
                           }
                           "lockDevice" -> {
                               if (dpm.isAdminActive(compName)) {
@@ -91,7 +95,7 @@ workflows:
           }
           EOF
 
-          # 4. Remplacement du Manifest avec les bonnes références
+          # 4. Écriture propre du Manifest Android
           cat << 'EOF' > android/app/src/main/AndroidManifest.xml
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
               <application
