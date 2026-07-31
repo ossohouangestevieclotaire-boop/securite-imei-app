@@ -8,8 +8,9 @@ workflows:
       - name: Generate Android scaffolding
         script: |
           flutter create . --platforms=android
-      - name: Inject Android Admin Config
+      - name: Inject Android Admin Config and Receiver
         script: |
+          # 1. Création du fichier device_admin.xml
           mkdir -p android/app/src/main/res/xml
           cat << 'EOF' > android/app/src/main/res/xml/device_admin.xml
           <?xml version="1.0" encoding="utf-8"?>
@@ -19,6 +20,35 @@ workflows:
               </uses-policies>
           </device-admin>
           EOF
+
+          # 2. Ajout propre du receiver dans le fichier AndroidManifest.xml via un script Python
+          python3 -c "
+          path = 'android/app/src/main/AndroidManifest.xml'
+          with open(path, 'r') as f:
+              content = f.read()
+
+          receiver_code = '''
+              <receiver
+                  android:name=\".MainActivity\"
+                  android:permission=\"android.permission.BIND_DEVICE_ADMIN\"
+                  android:exported=\"true\">
+                  <meta-data
+                      android:name=\"android.app.device_admin\"
+                      android:resource=\"@xml/device_admin\" />
+                  <intent-filter>
+                      <action android:name=\"android.app.action.DEVICE_ADMIN_ENABLED\" />
+                  </intent-filter>
+              </receiver>
+          '''
+
+          # On insère juste après la balise <application ...>
+          if '<application' in content:
+              parts = content.split('<application', 1)
+              content = parts[0] + '<application' + receiver_code + parts[1]
+
+          with open(path, 'w') as f:
+              f.write(content)
+          "
       - name: Get dependencies
         script: |
           flutter pub get
