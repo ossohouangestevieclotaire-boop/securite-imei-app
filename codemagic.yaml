@@ -8,9 +8,9 @@ workflows:
       - name: Generate Android scaffolding
         script: |
           flutter create . --platforms=android
-      - name: Create Clean Android Configuration
+      - name: Configure Device Admin Safely
         script: |
-          # 1. Création du fichier device_admin.xml
+          # 1. Création du fichier de configuration device_admin.xml
           mkdir -p android/app/src/main/res/xml
           cat << 'EOF' > android/app/src/main/res/xml/device_admin.xml
           <?xml version="1.0" encoding="utf-8"?>
@@ -21,53 +21,7 @@ workflows:
           </device-admin>
           EOF
 
-          # 2. Création complète d'un fichier AndroidManifest.xml propre avec désactivation du lint vital
-          cat << 'EOF' > android/app/src/main/AndroidManifest.xml
-          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-              <uses-permission android:name="android.permission.BIND_DEVICE_ADMIN"/>
-              <application
-                  android:label="securite_imei_app"
-                  android:name="${applicationName}"
-                  android:icon="@mipmap/ic_launcher">
-                  
-                  <receiver
-                      android:name="com.devicepolicymanager.DeviceAdminReceiver"
-                      android:permission="android.permission.BIND_DEVICE_ADMIN"
-                      android:exported="true">
-                      <meta-data
-                          android:name="android.app.device_admin"
-                          android:resource="@xml/device_admin" />
-                      <intent-filter>
-                          <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
-                      </intent-filter>
-                  </receiver>
-
-                  <activity
-                      android:name=".MainActivity"
-                      android:exported="true"
-                      android:launchMode="singleTop"
-                      android:taskAffinity=""
-                      android:theme="@style/LaunchTheme"
-                      android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
-                      android:hardwareAccelerated="true"
-                      android:windowSoftInputMode="adjustResize">
-                      <meta-data
-                          android:name="io.flutter.embedding.android.NormalTheme"
-                          android:resource="@style/NormalTheme"
-                      />
-                      <intent-filter>
-                          <action android:name="android.intent.action.MAIN"/>
-                          <category android:name="android.intent.category.LAUNCHER"/>
-                      </intent-filter>
-                  </activity>
-                  <meta-data
-                      android:name="flutterEmbedding"
-                      android:value="2" />
-              </application>
-          </manifest>
-          EOF
-
-          # 3. Désactiver lintVitalRelease dans build.gradle pour éviter le blocage
+          # 2. Ajout des lignes nécessaires dans build.gradle pour ignorer les alertes bloquantes
           echo "
           android {
               lint {
