@@ -8,6 +8,17 @@ workflows:
       - name: Generate Android scaffolding
         script: |
           flutter create . --platforms=android
+      - name: Inject Android Admin Config
+        script: |
+          mkdir -p android/app/src/main/res/xml
+          cat << 'EOF' > android/app/src/main/res/xml/device_admin.xml
+          <?xml version="1.0" encoding="utf-8"?>
+          <device-admin xmlns:android="http://schemas.android.com/apk/res/android">
+              <uses-policies>
+                  <force-lock />
+              </uses-policies>
+          </device-admin>
+          EOF
       - name: Get dependencies
         script: |
           flutter pub get
