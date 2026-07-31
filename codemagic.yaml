@@ -1,44 +1,4 @@
-workflows:
-  default-workflow:
-    name: Default Workflow
-    max_build_duration: 30
-    environment:
-      flutter: stable
-    scripts:
-      - name: Generate Android scaffolding & Native Bridge
-        script: |
-          flutter create . --platforms=android
-          
-          # 1. Création du fichier device_admin.xml
-          mkdir -p android/app/src/main/res/xml
-          cat << 'EOF' > android/app/src/main/res/xml/device_admin.xml
-          <?xml version="1.0" encoding="utf-8"?>
-          <device-admin xmlns:android="http://schemas.android.com/apk/res/android">
-              <uses-policies>
-                  <force-lock />
-              </uses-policies>
-          </device-admin>
-          EOF
-
-          # 2. Création du fichier DeviceAdminReceiver.kt natif
-          mkdir -p android/app/src/main/kotlin/com/securiteimei/securite_imei_app
-          cat << 'EOF' > android/app/src/main/kotlin/com/securiteimei/securite_imei_app/DeviceAdminReceiver.kt
-          package com.securiteimei.securite_imei_app
-          import android.app.admin.DeviceAdminReceiver
-          import android.content.Context
-          import android.content.Intent
-
-          class DeviceAdminReceiver : DeviceAdminReceiver() {
-              override fun onEnabled(context: Context, intent: Intent) {
-                  super.onEnabled(context, intent)
-              }
-              override fun onDisabled(context: Context, intent: Intent) {
-                  super.onDisabled(context, intent)
-              }
-          }
-          EOF
-
-          # 3. Création de MainActivity.kt avec le pont natif corrigé
+# 3. Création de MainActivity.kt corrigée pour lancer l'administrateur
           cat << 'EOF' > android/app/src/main/kotlin/com/securiteimei/securite_imei_app/MainActivity.kt
           package com.securiteimei.securite_imei_app
 
@@ -65,17 +25,15 @@ workflows:
                               result.success(dpm.isAdminActive(compName))
                           }
                           "requestAdmin" -> {
-                              val explanation = call.argument<String>("explanation") ?: ""
-                              val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
-                                  putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, compName)
-                                  putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, explanation)
-                                  addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                              }
                               try {
+                                  val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
+                                      putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, compName)
+                                      putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "Activation requise pour la protection antivol.")
+                                  }
                                   startActivity(intent)
                                   result.success(true)
                               } catch (e: Exception) {
-                                  result.error("ACTIVITY_ERROR", e.message, null)
+                                  result.error("ERROR", e.message, null)
                               }
                           }
                           "lockDevice" -> {
@@ -94,56 +52,3 @@ workflows:
               }
           }
           EOF
-
-          # 4. Écriture propre du Manifest Android
-          cat << 'EOF' > android/app/src/main/AndroidManifest.xml
-          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-              <application
-                  android:label="securite_imei_app"
-                  android:name="${applicationName}"
-                  android:icon="@mipmap/ic_launcher">
-                  
-                  <receiver
-                      android:name=".DeviceAdminReceiver"
-                      android:permission="android.permission.BIND_DEVICE_ADMIN"
-                      android:exported="true">
-                      <meta-data
-                          android:name="android.app.device_admin"
-                          android:resource="@xml/device_admin" />
-                      <intent-filter>
-                          <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
-                      </intent-filter>
-                  </receiver>
-
-                  <activity
-                      android:name=".MainActivity"
-                      android:exported="true"
-                      android:launchMode="singleTop"
-                      android:taskAffinity=""
-                      android:theme="@style/LaunchTheme"
-                      android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
-                      android:hardwareAccelerated="true"
-                      android:windowSoftInputMode="adjustResize">
-                      <meta-data
-                          android:name="io.flutter.embedding.android.NormalTheme"
-                          android:resource="@style/NormalTheme"
-                      />
-                      <intent-filter>
-                          <action android:name="android.intent.action.MAIN"/>
-                          <category android:name="android.intent.category.LAUNCHER"/>
-                      </intent-filter>
-                  </activity>
-                  <meta-data
-                      android:name="flutterEmbedding"
-                      android:value="2" />
-              </application>
-          </manifest>
-          EOF
-      - name: Get dependencies
-        script: |
-          flutter pub get
-      - name: Build APK
-        script: |
-          flutter build apk --release
-    artifacts:
-      - build/app/outputs/flutter-apk/app-release.apk
