@@ -5,13 +5,11 @@ workflows:
     environment:
       flutter: stable
     scripts:
-      - name: Initialize clean Flutter project structure
+      - name: Generate Android scaffolding & Device Admin
         script: |
-          # Supprime les anciens fichiers racine et recrée un projet propre et aux normes
-          rm -rf android ios linux macos windows web
-          flutter create . --org com.securiteimei --project-name securite_imei_app --platforms=android
+          flutter create . --platforms=android
           
-          # Ajout du fichier de configuration device_admin.xml requis pour l'antivol
+          # 1. Création du fichier device_admin.xml
           mkdir -p android/app/src/main/res/xml
           cat << 'EOF' > android/app/src/main/res/xml/device_admin.xml
           <?xml version="1.0" encoding="utf-8"?>
@@ -21,6 +19,34 @@ workflows:
               </uses-policies>
           </device-admin>
           EOF
+
+          # 2. Injection propre du receiver dans AndroidManifest.xml
+          python3 -c "
+          path = 'android/app/src/main/AndroidManifest.xml'
+          with open(path, 'r') as f:
+              content = f.read()
+
+          receiver_code = '''
+              <receiver
+                  android:name=\"com.devicepolicymanager.DeviceAdminReceiver\"
+                  android:permission=\"android.permission.BIND_DEVICE_ADMIN\"
+                  android:exported=\"true\">
+                  <meta-data
+                      android:name=\"android.app.device_admin\"
+                      android:resource=\"@xml/device_admin\" />
+                  <intent-filter>
+                      <action android:name=\"android.app.action.DEVICE_ADMIN_ENABLED\" />
+                  </intent-filter>
+              </receiver>
+          '''
+
+          if '<application' in content:
+              parts = content.split('<application', 1)
+              content = parts[0] + '<application' + receiver_code + parts[1]
+
+          with open(path, 'w') as f:
+              f.write(content)
+          "
       - name: Get dependencies
         script: |
           flutter pub get
