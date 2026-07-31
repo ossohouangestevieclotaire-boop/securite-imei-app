@@ -56,16 +56,15 @@ class _DashboardSecuriteScreenState extends State<DashboardSecuriteScreen> {
         _isAdminActive = isActive;
       });
     } catch (e) {
-      // Gestion silencieuse si non supporté sur l'émulateur
+      // Ignorer si non supporté ou non initialisé
     }
   }
 
   Future<void> _activerDroitsAdmin() async {
     try {
-      await DevicePolicyManager.requestPermession(
-        "L'activation des droits d'administration est requise pour empêcher la désinstallation de l'antivol et sécuriser l'appareil.",
+      await DevicePolicyManager.requestPermission(
+        "L'activation des droits d'administration est requise pour empêcher la désinstallation et sécuriser l'appareil.",
       );
-      // Revérifier après le retour des paramètres
       await _verifierStatutAdmin();
     } catch (e) {
       setState(() {
@@ -101,20 +100,18 @@ class _DashboardSecuriteScreenState extends State<DashboardSecuriteScreen> {
         setState(() {
           if (data['isStolen'] == true) {
             _isBlocked = true;
-            _statutMessage = "ALERTE ROUGE : Appareil volé ! Verrouillage du téléphone en cours...";
+            _statutMessage = "ALERTE ROUGE : Appareil volé ! Verrouillage en cours...";
           } else {
             _isBlocked = false;
             _statutMessage = "Succès : IMEI authentifié, protection active.";
           }
         });
 
-        // SI L'APPAREIL EST DECLARE VOLE -> VERROUILLAGE DISTANT DU TELEPHONE
         if (data['isStolen'] == true) {
           try {
-            // Verrouille instantanément l'écran du téléphone
             await DevicePolicyManager.lockNow();
           } catch (lockError) {
-            // Nécessite que les droits admin soient bien activés au préalable
+            // Nécessite que les droits admin soient actifs
           }
         }
       } else {
@@ -165,8 +162,6 @@ class _DashboardSecuriteScreenState extends State<DashboardSecuriteScreen> {
                 style: TextStyle(color: Colors.grey, fontSize: 13),
               ),
               const SizedBox(height: 20),
-              
-              // BOUTON POUR ACTIVER LES DROITS ADMINISTRATEUR (Anti-désinstallation)
               ElevatedButton.icon(
                 onPressed: _isAdminActive ? null : _activerDroitsAdmin,
                 style: ElevatedButton.styleFrom(
@@ -176,12 +171,11 @@ class _DashboardSecuriteScreenState extends State<DashboardSecuriteScreen> {
                 ),
                 icon: Icon(_isAdminActive ? Icons.check_circle : Icons.admin_panel_settings),
                 label: Text(
-                  _isAdminActive ? "Droits Admin Actifs (Protégé)" : "Activer la Protection Anti-Désinstallation",
+                  _isAdminActive ? "Protection Anti-Désinstallation Active" : "Activer la Protection Anti-Désinstallation",
                   style: const TextStyle(fontSize: 14, color: Colors.white),
                 ),
               ),
               const SizedBox(height: 20),
-
               TextField(
                 controller: _imeiController,
                 keyboardType: TextInputType.number,
