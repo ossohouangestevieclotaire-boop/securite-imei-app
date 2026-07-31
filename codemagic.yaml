@@ -5,12 +5,13 @@ workflows:
     environment:
       flutter: stable
     scripts:
-      - name: Generate Android scaffolding
+      - name: Initialize clean Flutter project structure
         script: |
-          flutter create . --platforms=android
-      - name: Configure Device Admin Safely
-        script: |
-          # 1. Création du fichier de configuration device_admin.xml
+          # Supprime les anciens fichiers racine et recrée un projet propre et aux normes
+          rm -rf android ios linux macos windows web
+          flutter create . --org com.securiteimei --project-name securite_imei_app --platforms=android
+          
+          # Ajout du fichier de configuration device_admin.xml requis pour l'antivol
           mkdir -p android/app/src/main/res/xml
           cat << 'EOF' > android/app/src/main/res/xml/device_admin.xml
           <?xml version="1.0" encoding="utf-8"?>
@@ -20,16 +21,6 @@ workflows:
               </uses-policies>
           </device-admin>
           EOF
-
-          # 2. Ajout des lignes nécessaires dans build.gradle pour ignorer les alertes bloquantes
-          echo "
-          android {
-              lint {
-                  checkReleaseBuilds false
-                  abortOnError false
-              }
-          }
-          " >> android/app/build.gradle
       - name: Get dependencies
         script: |
           flutter pub get
