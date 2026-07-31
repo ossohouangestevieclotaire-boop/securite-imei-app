@@ -62,7 +62,8 @@ class _DashboardSecuriteScreenState extends State<DashboardSecuriteScreen> {
 
   Future<void> _activerDroitsAdmin() async {
     try {
-      await DevicePolicyManager.requestPermission(
+      // Correction de l'orthographe exacte de la méthode du plugin
+      await DevicePolicyManager.requestPermession(
         "L'activation des droits d'administration est requise pour empêcher la désinstallation et sécuriser l'appareil.",
       );
       await _verifierStatutAdmin();
