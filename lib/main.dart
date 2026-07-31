@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:device_policy_manager/device_policy_manager.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -37,67 +37,48 @@ class DashboardSecuriteScreen extends StatefulWidget {
 class _DashboardSecuriteScreenState extends State<DashboardSecuriteScreen> {
   final TextEditingController _imeiController = TextEditingController();
   bool _isLoading = false;
-  String _statutMessage = "Vérification des accès système...";
+  String _statutMessage = "Prêt. Veuillez activer la protection anti-désinstallation.";
   bool _isBlocked = false;
   bool _isAdminActive = false;
 
+  static const platform = MethodChannel('securite.imei.app/admin');
   final String _apiBaseUrl = "https://plateforme-imei-securite.vercel.app/api";
 
   @override
   void initState() {
     super.initState();
-    _verifierEtDemanderAdminAuDemarrage();
+    _verifierAdmin();
   }
 
-  // Vérifie et demande l'administration automatiquement dès l'ouverture
-  Future<void> _verifierEtDemanderAdminAuDemarrage() async {
+  // Vérifie si l'administrateur est actif via le canal natif
+  Future<void> _verifierAdmin() async {
     try {
-      bool isActive = await DevicePolicyManager.isPermissionGranted();
+      final bool isActive = await platform.invokeMethod('isAdminActive');
       setState(() {
         _isAdminActive = isActive;
+        _statutMessage = isActive 
+            ? "Protection anti-désinstallation active." 
+            : "Veuillez activer la protection anti-désinstallation.";
       });
-
-      if (!isActive) {
-        // Demande automatique au premier lancement
-        await DevicePolicyManager.requestPermession(
-          "L'activation des droits d'administration est obligatoire pour sécuriser l'appareil et empêcher la désinstallation.",
-        );
-        // Revérifier après le retour de l'utilisateur
-        bool updatedStatus = await DevicePolicyManager.isPermissionGranted();
-        setState(() {
-          _isAdminActive = updatedStatus;
-          _statutMessage = updatedStatus 
-              ? "Protection anti-désinstallation active." 
-              : "Attention : Droits requis pour une protection optimale.";
-        });
-      } else {
-        setState(() {
-          _statutMessage = "Protection système et traçabilité prêtes.";
-        });
-      }
     } catch (e) {
-      setState(() {
-        _statutMessage = "Prêt. Veuillez entrer votre IMEI.";
-      });
+      // Ignorer si non supporté sur la plateforme de test
     }
   }
 
+  // Demande l'activation des droits d'administration à l'OS Android
   Future<void> _activerDroitsAdmin() async {
     setState(() {
       _statutMessage = "Ouverture des paramètres d'administration...";
     });
     try {
-      await DevicePolicyManager.requestPermession(
-        "L'activation des droits d'administration est requise pour empêcher la désinstallation.",
-      );
-      bool isActive = await DevicePolicyManager.isPermissionGranted();
-      setState(() {
-        _isAdminActive = isActive;
-        _statutMessage = isActive ? "Protection active avec succès." : "Activation annulée ou en attente.";
+      await platform.invokeMethod('requestAdmin', {
+        'explanation': "L'activation des droits d'administration est requise pour empêcher la désinstallation."
       });
+      // Revérifier après le retour de l'utilisateur
+      await _verifierAdmin();
     } catch (e) {
       setState(() {
-        _statutMessage = "Veuillez valider l'administration dans les réglages.";
+        _statutMessage = "Erreur lors de l'ouverture des paramètres.";
       });
     }
   }
@@ -138,10 +119,8 @@ class _DashboardSecuriteScreenState extends State<DashboardSecuriteScreen> {
 
         if (data['isStolen'] == true) {
           try {
-            await DevicePolicyManager.lockNow();
-          } catch (lockError) {
-            // Nécessite l'activation administrateur
-          }
+            await platform.invokeMethod('lockDevice');
+          } catch (_) {}
         }
       } else {
         setState(() {
