@@ -19,22 +19,30 @@ workflows:
               </uses-policies>
           </device-admin>
           EOF
-          
-          # Ajout du receiver dans le fichier AndroidManifest.xml
-          MANIFEST="android/app/src/main/AndroidManifest.xml"
-          sed -i '' '/<application/a\
-              <receiver\
-                  android:name=".MainActivity"\
-                  android:permission="android.permission.BIND_DEVICE_ADMIN"\
-                  android:exported="true">\
-                  <meta-data\
-                      android:name="android.app.device_admin"\
-                      android:resource="@xml/device_admin" />\
-                  <intent-filter>\
-                      <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />\
-                  </intent-filter>\
+
+          python3 -c "
+          path = 'android/app/src/main/AndroidManifest.xml'
+          with open(path, 'r') as f:
+              content = f.read()
+
+          receiver_code = '''
+              <receiver
+                  android:name=\".MainActivity\"
+                  android:permission=\"android.permission.BIND_DEVICE_ADMIN\"
+                  android:exported=\"true\">
+                  <meta-data
+                      android:name=\"android.app.device_admin\"
+                      android:resource=\"@xml/device_admin\" />
+                  <intent-filter>
+                      <action android:name=\"android.app.action.DEVICE_ADMIN_ENABLED\" />
+                  </intent-filter>
               </receiver>
-          ' "$MANIFEST"
+          '''
+
+          content = content.replace('<application', '<application' + receiver_code)
+          with open(path, 'w') as f:
+              f.write(content)
+          "
       - name: Get dependencies
         script: |
           flutter pub get
